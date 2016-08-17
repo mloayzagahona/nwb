@@ -69,8 +69,8 @@ The configuration object can include the following properties:
   - [`webpack.extractText`](#extracttext-object) - options for `ExtractTextPlugin`
   - [`webpack.html`](#html-object) - options for `HtmlPlugin`
   - [`webpack.install`](#install-object) - options for `NpmInstallPlugin`
-  - [`webpack.loaders`](#loaders-object) - tweak the configuration of the default Webpack loaders
-    - [Default Loaders](#default-loaders)
+  - [`webpack.rules`](#rules-object) - tweak the configuration of the default Webpack rules
+    - [Default Rules](#default-rules)
   - [`webpack.postcss`](#postcss-arrayplugin--objectstring-arrayplugin) - custom PostCSS plugins
   - [`webpack.publicPath`](#publicpath-string) - path to static resources
   - [`webpack.uglify`](#uglify-object--false) - configure use of Webpack's `UglifyJsPlugin`
@@ -123,7 +123,7 @@ module.exports = {
 
 [Babel](https://babeljs.io/) configuration can be provided in a `babel` object, using the following properties.
 
-> For Webpack builds, any Babel config provided will be used to configure `babel-loader` - you can also provide additional configuration in [`webpack.loaders`](#loaders-object) if necessary.
+> For Webpack builds, any Babel config provided will be used to configure `babel-loader` - you can also provide additional configuration in [`webpack.rules`](#rules-object) if necessary.
 
 ##### `cherryPick`: `String | Array<String>`
 
@@ -454,22 +454,22 @@ module.exports = {
 
 Configures [options for `NpmInstallPlugin`](https://github.com/ericclemmons/npm-install-webpack-plugin#usage), which will be used if you pass an `--install` flag to `nwb serve`.
 
-##### `loaders`: `Object`
+##### `rules`: `Object`
 
-Each [Webpack loader](https://webpack.github.io/docs/loaders.html) used in nwb's default Webpack configuration has a unique id you can use to customise it.
+Each [Webpack rule](https://webpack.js.org/configuration/module/#module-rules) used in nwb's default Webpack configuration has a unique id you can use to customise it.
 
-To customise a loader, add a prop to the `loaders` object matching its id with a configuration object.
+To customise a rule, add a prop to the `rules` object matching its id with a configuration object.
 
-Refer to each Webpack loader's documentation (linked to for each [default loader](#default-loaders) documented below) for configuration options which can be set.
+Refer to the documentation of the Webpack loader used in each rule (linked to for each [default rule](#default-rules) documented below) for configuration options which can be set.
 
-Generic loader options such as `include` and `exclude` can be configured alongside loader-specific query options - you can also use an explicit `query` object if necessary to separate this configuration.
+Generic rule options such as `include` and `exclude` can be configured alongside loader-specific options - you can also use an explicit `options` object if necessary to separate this configuration.
 
-e.g. to enable [CSS Modules][CSS Modules] for your app's CSS, the following loader configs are equivalent:
+e.g. to enable [CSS Modules][CSS Modules] for your app's CSS, the following rule configs are equivalent:
 
 ```js
 module.exports = {
   webpack: {
-    loaders: {
+    rules: {
       css: {
         modules: true,
         localIdentName: '[hash:base64:5]'
@@ -481,9 +481,9 @@ module.exports = {
 ```js
 module.exports = {
   webpack: {
-    loaders: {
+    rules: {
       css: {
-        query: {
+        options: {
           modules: true,
           localIdentName: '[hash:base64:5]'
         }
@@ -493,35 +493,13 @@ module.exports = {
 }
 ```
 
-If a loader supports configuration via a top-level webpack configuration property, this can be provided as a `config` prop. This is primarily for loaders which can't be configured via query parameters as they have configuration which can't be serialised, such as instances of plugins.
+###### Default Rules
 
-e.g. to use the `nib` plugin with the [Stylus](http://learnboost.github.io/stylus/) preprocessor provided by [nwb-stylus](https://github.com/insin/nwb-stylus):
-
-```js
-var nib = require('nib')
-
-{
-  webpack: {
-    loaders: {
-      stylus: {
-        config: {
-          use: [nib()]
-        }
-      }
-    }
-  }
-}
-```
-
-Alternatively, you can also add new properties directly to the top-level Webpack config using [`extra` config](#extra-object).
-
-###### Default Loaders
-
-Default loaders configured by nwb and the ids it gives them are:
+Default rules configured by nwb and the ids it gives them are:
 
 - `babel` - handles `.js` files with [babel-loader][babel-loader]
 
-  > Default config: `{exclude: /node_modules/, query: {babelrc: false, cacheDirectory: true}}`
+  > Default config: `{exclude: /node_modules/, options: {babelrc: false, cacheDirectory: true}}`
 
 - `css-pipeline` - handles your app's own `.css` files by chaining together a number of loaders:
 
@@ -533,7 +511,7 @@ Default loaders configured by nwb and the ids it gives them are:
 
   - `css` - handles URLs, minification and CSS Modules using [css-loader][css-loader]
 
-    > Default config: `{query: {importLoaders: 1}}`
+    > Default config: `{options: {importLoaders: 1}}`
 
   - `postcss` - processes CSS with PostCSS plugins using [postcss-loader][postcss-loader]; by default, this is configured to manage vendor prefixes in CSS using [Autoprefixer][autoprefixer]
 
@@ -553,56 +531,26 @@ Default loaders configured by nwb and the ids it gives them are:
 
 - `audio` - handles `.wav`, `.mp3`, `.m4a`, `.aac`, and `.oga` files using [url-loader][url-loader]
 
-> Default config for all url-loaders in production builds is `{query: {limit: 1, name: '[name].[hash:8].[ext]'}}`, otherwise `{query: {limit: 1, name: '[name].[ext]'}}`.
+> Default config for all url-loaders in production builds is `{options: {limit: 1, name: '[name].[hash:8].[ext]'}}`, otherwise `{options: {limit: 1, name: '[name].[ext]'}}`.
 
 > Default `limit` config prevents any files being inlined by default, while allowing you to configure `url-loader` to enable inlining if you need it.
 
-- `json` - handles `.json` files using [json-loader][json-loader]
+##### `postcss`: `Array<Plugin>`
 
-##### `postcss`: `Array<Plugin> | Object<String, Array<Plugin>>`
+By default, nwb uses PostCSS to manage vendor prefixes in CSS using [Autoprefixer][autoprefixer].
 
-By default, nwb configures the `postcss-loader` in each style pipeline to automatically manage vendor prefixes for CSS rules.
-
-Use `postcss` configuration to provide your own list of PostCSS plugins to be used for each pipeline, which will completely overwrite nwb's default configuration.
-
-If you're *only* configuring PostCSS plugins for your app's own CSS, you can just provide a list:
+If you want to make more significant use of PostCSS in your app's own CSS, provide `postcss` configuration with your own list of [PostCSS](http://postcss.org/) plugins:
 
 ```js
 module.exports = {
   webpack: {
     postcss: [
-      require('precss')(),
+      require('precss')()
       require('autoprefixer')()
     ]
   }
 }
 ```
-
-Use an object if you're configuring other style pipelines. When using an object, PostCSS plugins for the default style pipeline (applied to your app's own CSS) must be configured using a `defaults` property:
-
-```js
-var autoprefixer = require('autoprefixer')
-var precss = require('precss')
-module.exports = {
-  webpack: {
-    postcss: {
-      defaults: [
-        precss(),
-        autoprefixer()
-      ],
-      vendor: [
-        autoprefixer({add: false})
-      ]
-    }
-  }
-}
-```
-
-Plugins for other style pipelines are configured using their prefix as a property name: `vendor` for anything imported out of `node_modules/`, `sass` if you're using the `nwb-sass` preprocessor plugin, etc.
-
-Your app is responsible for managing its own PostCSS plugin dependencies - between the size of the PostCSS ecosystem and the number of different configuration options `postcss-loader` supports, PostCSS could do with its own equivalent of nwb to manage dependencies and configuration!
-
-It's recommended to create instances of PostCSS plugins in your config, as opposed to passing a module, in case you ever need to make use of debug output (enabled by setting a `DEBUG` environment variable to `nwb`) to examine generated config.
 
 ##### `publicPath`: `String`
 
@@ -684,7 +632,7 @@ module.exports = {
 
 Extra configuration to be merged into the generated Webpack configuration using [webpack-merge](https://github.com/survivejs/webpack-merge#webpack-merge---merge-designed-for-webpack) - see the [Webpack configuration docs](https://webpack.github.io/docs/configuration.html) for the available fields.
 
-Note that you *must* use Webpack's own config structure in this object - e.g. to add an extra loader which isn't managed by nwb's own `webpack.loaders` config, you would need to provide a list of loaders at `webpack.extra.module.loaders`.
+Note that you *must* use Webpack's own config structure in this object - e.g. to add an extra rule which isn't managed by nwb's own `webpack.rules` config, you would need to provide a list of rules at `webpack.extra.module.rules`.
 
 ```js
 var path = require('path')
@@ -694,10 +642,10 @@ function(nwb) {
     type: 'react-app',
     webpack: {
       extra: {
-        // Example of adding an extra loader which isn't managed by nwb,
-        // assuming you've installed html-loader in your project.
+        // Example of adding an extra rule which isn't managed by nwb,
+        // assuming you have installed html-loader in your project.
         module: {
-          loaders: [
+          rules: [
             {test: /\.html$/, loader: 'html'}
           ]
         },
@@ -984,7 +932,6 @@ If all fields are present the banner will be in this format:
 [CSS Modules]: https://github.com/css-modules/css-modules/
 [css-loader]: https://github.com/webpack/css-loader/
 [isparta-loader]: https://github.com/deepsweet/isparta-loader/
-[json-loader]: https://github.com/webpack/json-loader/
 [npm-install-loader]: https://github.com/ericclemmons/npm-install-loader/
 [postcss-loader]: https://github.com/postcss/postcss-loader/
 [style-loader]: https://github.com/webpack/style-loader/

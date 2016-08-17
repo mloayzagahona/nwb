@@ -2,7 +2,7 @@ import expect from 'expect'
 import webpack from 'webpack'
 
 import {ConfigValidationError} from '../src/errors'
-import getUserConfig, {prepareWebpackLoaderConfig, processUserConfig} from '../src/getUserConfig'
+import getUserConfig, {prepareWebpackRuleConfig, processUserConfig} from '../src/getUserConfig'
 
 describe('getUserConfig()', () => {
   it("throws an error when a required config file can't be found", () => {
@@ -85,10 +85,6 @@ describe('processUserConfig()', () => {
       let config = process({webpack: {autoprefixer: 'test'}})
       expect(config.webpack.autoprefixer).toEqual({browsers: 'test'})
     })
-    it('allows webpack.postcss to be an array', () => {
-      let config = process({webpack: {postcss: ['test']}})
-      expect(config.webpack.postcss).toEqual({defaults: ['test']})
-    })
     it('allows webpack.copy to be an array', () => {
       let config = process({webpack: {copy: ['test']}})
       expect(config.webpack.copy).toEqual({patterns: ['test']})
@@ -163,27 +159,25 @@ describe('processUserConfig()', () => {
   })
 })
 
-describe('prepareWebpackLoaderConfig()', () => {
+describe('prepareWebpackRuleConfig()', () => {
   it('does nothing if a query object is already present', () => {
     let config = {
       css: {
         test: /test/,
         include: /include/,
         exclude: /exclude/,
-        config: {a: 42},
-        query: {
+        options: {
           a: 42,
         },
         other: true,
       },
     }
-    prepareWebpackLoaderConfig(config)
+    prepareWebpackRuleConfig(config)
     expect(config.css).toEqual({
       test: /test/,
       include: /include/,
       exclude: /exclude/,
-      config: {a: 42},
-      query: {
+      options: {
         a: 42,
       },
       other: true,
@@ -195,18 +189,16 @@ describe('prepareWebpackLoaderConfig()', () => {
         test: /test/,
         include: /include/,
         exclude: /exclude/,
-        config: {a: 42},
         modules: true,
         localIdentName: 'asdf',
       },
     }
-    prepareWebpackLoaderConfig(config)
+    prepareWebpackRuleConfig(config)
     expect(config.css).toEqual({
       test: /test/,
       include: /include/,
       exclude: /exclude/,
-      config: {a: 42},
-      query: {
+      options: {
         modules: true,
         localIdentName: 'asdf',
       },

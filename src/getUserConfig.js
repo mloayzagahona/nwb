@@ -93,17 +93,17 @@ export class UserConfigReport {
 }
 
 /**
- * Move loader query config tweaks into a query object, allowing users to
+ * Move loader options config into an options object, allowing users to
  * provide a flat config.
  */
-export function prepareWebpackLoaderConfig(loaders) {
-  Object.keys(loaders).forEach(loaderId => {
-    let loader = loaders[loaderId]
-    if (loader.query) return loader
-    let {config, exclude, include, test, ...query} = loader // eslint-disable-line no-unused-vars
-    if (Object.keys(query).length > 0) {
-      loader.query = query
-      Object.keys(query).forEach(prop => delete loader[prop])
+export function prepareWebpackRuleConfig(rules) {
+  Object.keys(rules).forEach(ruleId => {
+    let rule = rules[ruleId]
+    if (rule.options) return
+    let {exclude, include, test, ...options} = rule // eslint-disable-line no-unused-vars
+    if (Object.keys(options).length > 0) {
+      rule.options = options
+      Object.keys(options).forEach(prop => delete rule[prop])
     }
   })
 }
@@ -111,6 +111,7 @@ export function prepareWebpackLoaderConfig(loaders) {
 let warnedAboutBabelLoose = false
 let warnedAboutBuildChange = false
 let warnedAboutKarmaTests = false
+let warnedAboutPostCSS = false
 
 // TODO Remove in a future version
 function upgradeBuildConfig(build, userConfigPath, report = {deprecated() {}}) {
@@ -209,10 +210,10 @@ export function processUserConfig({
       )
     }
   }
-  if (userConfig.babel.presets && !Array.isArray(userConfig.babel.presets)) {
+  if (userConfig.babel.presets && typeOf(userConfig.babel.presets) !== 'array') {
     report.error('babel.presets', userConfig.babel.presets, `Must be an ${chalk.cyan('Array')}`)
   }
-  if (userConfig.babel.plugins && !Array.isArray(userConfig.babel.plugins)) {
+  if (userConfig.babel.plugins && typeOf(userConfig.babel.plugins) !== 'array') {
     report.error('babel.plugins', userConfig.babel.plugins, `Must be an ${chalk.cyan('Array')}`)
   }
   if ('runtime' in userConfig.babel &&
@@ -369,12 +370,36 @@ export function processUserConfig({
     )
   }
 
+  // TODO Remove in a future version
   if (userConfig.webpack.loaders) {
-    prepareWebpackLoaderConfig(userConfig.webpack.loaders)
+    report.deprecated('webpack.loaders',
+      `Deprecated in favour of ${chalk.green('webpack.rules')} config as of nwb v0.14.`
+    )
+    userConfig.webpack.rules = userConfig.webpack.loaders
+    delete userConfig.webpack.loaders
   }
 
-  if (typeOf(userConfig.webpack.postcss) === 'array') {
-    userConfig.webpack.postcss = {defaults: userConfig.webpack.postcss}
+  if (userConfig.webpack.rules) {
+    prepareWebpackRuleConfig(userConfig.webpack.rules)
+  }
+
+  // TODO Remove in a future version
+  if ('postcss' in userConfig.webpack && typeOf(userConfig.webpack.postcss) === 'object') {
+    let messages = [`Configuring PostCSS plugins with an Object is deprecated as of nwb v0.14.`]
+    if (typeOf(userConfig.webpack.postcss.defaults) === 'array') {
+      userConfig.webpack.postcss = userConfig.webpack.postcss.defaults
+      messages.push(`nwb will use ${chalk.yellow('webpack.postcss.defaults')} for PostCSS config during a build.`)
+    }
+    else {
+      messages.push(`nwb will use its default PostCSS config during a build.`)
+    }
+    if (!warnedAboutPostCSS) {
+      report.deprecated('webpack.postcss', ...messages)
+      warnedAboutPostCSS = true
+    }
+  }
+  else if ('postcss' in userConfig.webpack && typeOf(userConfig.webpack.postcss) !== 'array') {
+    report.error('webpack.postcss', `type: ${typeOf(userConfig.webpack.postcss)}`, 'Must be an Array.')
   }
 
   if (userConfig.webpack.extra) {
